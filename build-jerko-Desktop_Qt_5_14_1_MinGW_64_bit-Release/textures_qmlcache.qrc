@@ -1,6 +1,0 @@
-<?xml version="1.0"?>
-<RCC>
-    <qresource prefix="/">
-        <file alias="farina.png">../jerko/farina.png</file>
-    </qresource>
-</RCC>
