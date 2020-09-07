@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/">
+        <file>farina.png</file>
+        <file>main.qml</file>
+    </qresource>
+</RCC>

@@ -1,0 +1,11 @@
+geometry.o
+geometryengine.o
+main.o
+mesh.o
+octree.o
+renderer.o
+qrc_qml.o
+qrc_shaders.o
+qrc_textures.o
+moc_geometry.o
+moc_renderer.o
