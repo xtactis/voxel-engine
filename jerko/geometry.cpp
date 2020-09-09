@@ -25,6 +25,7 @@ void Geometry::cleanup()
 }
 
 void Geometry::setPosition(const QVector3D &position) {
+    qDebug() << "geometry set Position" << position;
     m_position = position;
     emit positionChanged();
     if (renderer) renderer->setPosition(m_position); // FIXME: no

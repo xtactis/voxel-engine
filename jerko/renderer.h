@@ -17,40 +17,42 @@ QT_BEGIN_NAMESPACE
 namespace Ui { class Renderer; }
 QT_END_NAMESPACE
 
-class Renderer : public QObject, protected QOpenGLFunctions
+struct Renderer : public QObject, protected QOpenGLFunctions
 {
     Q_OBJECT
-
 public:
+    QSize viewportSize;
+    QOpenGLShaderProgram *program;
+    QQuickWindow *window;
+    QOpenGLTexture *farina;
+    QMatrix4x4 projection;
+    std::vector<std::shared_ptr<GeometryEngine>> geometries;
+
+    QVector3D position;
+    QQuaternion rotation;
+
+    bool paused{false};
+    int thetaX{0}, thetaY{0};
+
     Renderer();
     ~Renderer();
-
     void setPosition(const QVector3D &pos) { position = pos; };
     void setRotation(const QQuaternion &rot) { rotation = rot; };
-    void setViewportSize(const QSize &size) { viewportSize = size; }
+    void setViewportSize(const  QSize &size) { viewportSize = size; }
     void setWindow(QQuickWindow *w) { window = w; }
     void resize(int w, int h);
     void reset(){
-        for (auto &geom: geometries) {
-            delete geom;
-        }
+        paused = true;
         geometries.clear();
+        paused = false;
     }
-    void addLayer(const std::vector<QVector3D> &pts) {
-        addLayer();
+    void addLayer(const std::vector<QVector3D> &pts, float size) {
+        addLayer(size);
         geometries.back()->addPoints(pts);
     }
-    void addLayer() {
-        geometries.push_back(new GeometryEngine());
+    void addLayer(float size = 20) {
+        geometries.push_back(std::make_shared<GeometryEngine>(size));
     }
-
-protected:
-    //void mousePressEvent(QMouseEvent *e) override;
-    //void mouseReleaseEvent(QMouseEvent *e) override;
-    //void timerEvent(QTimerEvent *e) override;
-
-    //void initializeGL() override;
-    //void paintGL() override;
 
     void initShaders();
     void initTextures();
@@ -58,17 +60,6 @@ protected:
 public slots:
     void init();
     void paint();
-
-private:
-    QSize viewportSize;
-    QOpenGLShaderProgram *program;
-    QQuickWindow *window;
-    QOpenGLTexture *farina;
-    QMatrix4x4 projection;
-    std::vector<GeometryEngine *> geometries; // consider using smart ptrs
-
-    QVector3D position;
-    QQuaternion rotation;
 };
 
 #endif // MAINWINDOW_H

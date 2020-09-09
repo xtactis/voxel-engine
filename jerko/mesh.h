@@ -21,9 +21,6 @@ struct Mesh {
         points.push_back(point[0]);
         points.push_back(point[1]);
         points.push_back(point[2]);
-        colors.push_back(0.560);
-        colors.push_back(0.725);
-        colors.push_back(1.0);
         //colors.push_back((point[2]-minz)/(maxz-minz));
         //colors.push_back((point[2]-minz)/(maxz-minz));
         //colors.push_back((point[2]-minz)/(maxz-minz));
@@ -120,31 +117,6 @@ struct Mesh {
         points.clear();
         colors.clear();
     }
-
-    /*void drawMesh() {
-        // Get the variables from the shader to which data will be passed
-        int mvloc = glGetUniformLocation(shader->program, "umvMat");
-        GLint ploc = glGetUniformLocation(shader->program, "upMat");
-
-        // Pass the model-view matrix to the shader
-        GLfloat mvMat[16];
-        glGetFloatv(GL_MODELVIEW_MATRIX, mvMat);
-        glUniformMatrix4fv(mvloc, 1, false, mvMat);
-
-        // Pass the projection matrix to the shader
-        GLfloat pMat[16];
-        glGetFloatv(GL_PROJECTION_MATRIX, pMat);
-        glUniformMatrix4fv(ploc, 1, false, pMat);
-
-        // Enable VAO to set pyramid data
-        glBindVertexArray(vaoIds[0]);
-
-        // Draw pyramid
-        glDrawArrays(GL_TRIANGLES, 0, _pSize);
-
-        // Disable VAO
-        glBindVertexArray(0);
-    }*/
 
     void createMesh(QOpenGLBuffer &arrayBuf) {
         // TODO: this is trash fix it

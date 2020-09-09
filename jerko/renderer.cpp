@@ -16,7 +16,8 @@ Renderer::Renderer() : program(0) {
     glEnable(GL_DEPTH_TEST); // z-buffer test
     //glDepthFunc(GL_LESS);
     glShadeModel(GL_SMOOTH);
-    geometries.push_back(new GeometryEngine());
+    qDebug() << this;
+    geometries.push_back(std::make_shared<GeometryEngine>());
 }
 
 Renderer::~Renderer()
@@ -82,7 +83,7 @@ void Renderer::resize(int w, int h)
     qreal aspect = qreal(w) / qreal(h ? h : 1);
 
     // Set near plane to 3.0, far plane to 7.0, field of view 45 degrees
-    const qreal zNear = 2.0, zFar = 100.0, fov = 45.0;
+    const qreal zNear = 2.0, zFar = 200.0, fov = 45.0;
 
     // Reset projection
     projection.setToIdentity();
@@ -93,6 +94,7 @@ void Renderer::resize(int w, int h)
 
 void Renderer::paint()
 {
+    if (paused) return;
     window->beginExternalCommands();
 
     program->bind();
@@ -104,21 +106,22 @@ void Renderer::paint()
 
     // Calculate model view transformation
     QMatrix4x4 matrix;
-    matrix.translate(position);
+
     matrix.rotate(rotation);
+    matrix.translate(position);
+    matrix.rotate(thetaX, 0, 1, 0);
+    matrix.rotate(thetaY, 1, 0, 0);
 
     // Set modelview-projection matrix
-    program->setUniformValue("mvp_matrix", projection * matrix);
+    program->setUniformValue("mv_matrix", matrix);
+    program->setUniformValue("p_matrix", projection * matrix);
 
     // Use texture unit 0 which contains farina.png
     //program->setUniformValue("texture", 0);
-    program->setUniformValue("a_color", QColor(138, 192, 255));
+    program->setUniformValue("a_color", QColor(255, 255, 255));
 
     // Draw cube geometry
     for (const auto &geom: geometries) {
-        if (!geom->initialized()) {
-            geom->init();
-        }
         geom->drawCubeGeometry(program);
     }
 

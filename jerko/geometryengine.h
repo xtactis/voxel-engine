@@ -2,6 +2,7 @@
 #define GEOMETRYENGLINE_H
 
 #include <vector>
+#include <atomic>
 
 #include <QOpenGLFunctions>
 #include <QOpenGLShaderProgram>
@@ -10,10 +11,15 @@
 
 #include "octree.h"
 
-class GeometryEngine
+struct GeometryEngine
 {
-public:
-    GeometryEngine();
+    QOpenGLBuffer arrayBuf;
+    std::shared_ptr<Octree> octree;
+
+    bool _initialized{false};
+    bool paused{false};
+
+    GeometryEngine(float size=20);
     virtual ~GeometryEngine();
     void init();
 
@@ -23,33 +29,31 @@ public:
     void addPoints(const std::vector<QVector3D> &pts) {
         // TODO: make octree take the pts in the constructor
         for (const auto &point: pts) {
-            octree.addPoint(point);
+            octree->addPoint(point);
         }
+        octree->loaded = true;
+        qDebug() << "size:" << octree->size();
     }
     void addPoint(float x, float y, float z) {
-        octree.addPoint(x, y, z);
+        octree->addPoint(x, y, z);
     }
     void addPoint(const QVector3D &point) {
-        octree.addPoint(point);
+        octree->addPoint(point);
     }
     //void addCube(float x, float y, float z);
     //void addCube(QVector3D);
     void draw() {
-        if (octree.changed()) {
-            octree.createMesh(arrayBuf);
+        if (octree->changed()) {
+            octree->createMesh(arrayBuf);
         }
-        octree.draw();
+        octree->draw();
     }
 
-private:
+    void serialize(std::ofstream &outfile) {
+        octree->serialize(outfile);
+    }
+
     void initCubeGeometry();
-
-    QOpenGLBuffer arrayBuf;
-    QOpenGLBuffer indexBuf;
-    QOpenGLBuffer colorBuf;
-    Octree octree;
-
-    bool _initialized;
 };
 
 #endif // GEOMETRYENGLINE_H

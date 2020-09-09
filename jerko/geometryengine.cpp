@@ -9,10 +9,9 @@ struct VertexData
     QVector2D texCoord;
 };
 
-GeometryEngine::GeometryEngine() :
-    indexBuf(QOpenGLBuffer::IndexBuffer),
-    octree(20) // idk lol pipe this in somehow TODO
+GeometryEngine::GeometryEngine(float size)
 {
+    octree = std::make_shared<Octree>(size);
     //arrayBuf.setUsagePattern(QOpenGLBuffer::StaticDraw);
 
     //initCubeGeometry();
@@ -23,8 +22,9 @@ GeometryEngine::GeometryEngine() :
 
 GeometryEngine::~GeometryEngine()
 {
+    qDebug() << "destruct";
     arrayBuf.destroy();
-    indexBuf.destroy();
+    qDebug() << "arraybuf";
 }
 
 bool GeometryEngine::initialized() const {
@@ -32,22 +32,27 @@ bool GeometryEngine::initialized() const {
 }
 
 void GeometryEngine::init() {
+    if (!octree->loaded) return;
     qDebug() << "Creating buffer";
     qDebug() << arrayBuf.create();
 
     // creating mesh
-    octree.createMesh(arrayBuf);
+    octree->createMesh(arrayBuf);
 
-    qDebug() << octree.maxDepth;
-    qDebug() << octree.maxDepth;
-    qDebug() << octree.halfsize;
-    qDebug() << octree.resolution;
+    qDebug() << octree->maxDepth;
+    qDebug() << octree->maxDepth;
+    qDebug() << octree->halfsize;
+    qDebug() << octree->resolution;
+    qDebug() << octree->size();
 
     _initialized = true;
 }
 
 void GeometryEngine::drawCubeGeometry(QOpenGLShaderProgram *program)
 {
+    if (!_initialized) {
+        init();
+    }
     // Tell OpenGL which VBOs to use
     arrayBuf.bind();
 
@@ -65,5 +70,5 @@ void GeometryEngine::drawCubeGeometry(QOpenGLShaderProgram *program)
     //program->setAttributeBuffer(colorLocation, GL_FLOAT, offset, 4, 7*sizeof(float));
     //program->enableAttributeArray(colorLocation);
 
-    glDrawArrays(GL_TRIANGLES, 0, octree.mesh.points.size()/3);
+    glDrawArrays(GL_TRIANGLES, 0, octree->mesh.points.size()/3);
 }

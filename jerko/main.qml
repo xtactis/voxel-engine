@@ -7,9 +7,9 @@ import QtQuick.Dialogs 1.2
 Item {
     id: app
     width: 1280
-    height: 720
+    height: 750
 
-    focus: true
+    //focus: true
 
     function getPath(path) {
         return decodeURIComponent(path.toString().slice(7))
@@ -20,10 +20,13 @@ Item {
         title: "Open"
         folder: shortcuts.home
         onAccepted: {
+            geom.newProject()
             geom.open(getPath(this.fileUrl))
+            glStuff.focus = true
             this.close()
         }
         onRejected: {
+            glStuff.focus = true
             this.close()
         }
         Component.onCompleted: visible = false
@@ -37,13 +40,16 @@ Item {
         folder: shortcuts.home
         onAccepted: {
             geom.save(getPath(this.fileUrl))
+            glStuff.focus = true
             this.close()
         }
         onRejected: {
+            glStuff.focus = true
             this.close()
         }
         Component.onCompleted: visible = false
         selectMultiple: false
+        selectExisting: false
         nameFilters: [ "Farina files (*.far)", "Other files (*)" ]
     }
 
@@ -56,9 +62,11 @@ Item {
             for (let path of paths) {
                 geom.importModel(getPath(path))
             }
+            glStuff.focus = true
             this.close()
         }
         onRejected: {
+            glStuff.focus = true
             this.close()
         }
         Component.onCompleted: visible = false
@@ -72,9 +80,11 @@ Item {
         folder: shortcuts.home
         onAccepted: {
             geom.exportModel(getPath(this.fileUrl))
+            glStuff.focus = true
             this.close()
         }
         onRejected: {
+            glStuff.focus = true
             this.close()
         }
         Component.onCompleted: visible = false
@@ -90,10 +100,14 @@ Item {
         standardButtons: StandardButton.Yes | StandardButton.No
         Component.onCompleted: visible = false
         onYes: {
+            glStuff.focus = true
             this.close()
             geom.newProject()
         }
-        onNo: this.close()
+        onNo: {
+            glStuff.focus = true
+            this.close()
+        }
     }
 
     MessageDialog {
@@ -104,10 +118,14 @@ Item {
         standardButtons: StandardButton.Yes | StandardButton.No
         Component.onCompleted: visible = false
         onYes: {
+            glStuff.focus = true
             this.close()
             openDialog.open()
         }
-        onNo: this.close()
+        onNo: {
+            glStuff.focus = true
+            this.close()
+        }
     }
 
     MessageDialog {
@@ -121,14 +139,20 @@ Item {
             this.close()
             Qt.quit()
         }
-        onNo: this.close()
+        onNo: {
+            glStuff.focus = true
+            this.close()
+        }
     }
 
     MessageDialog {
         id: aboutDialog
         title: "About Farina"
         text: "Farina v0.1 is the first stable version of the Farina OcTree editor."
-        onAccepted: this.close()
+        onAccepted: {
+            glStuff.focus = true
+            this.close()
+        }
         Component.onCompleted: visible = false
     }
 
@@ -136,12 +160,17 @@ Item {
         id: helpDialog
         title: "Help"
         text: "Helpful stuff will be displayed here at some point in the future"
-        onAccepted: this.close()
+        onAccepted: {
+            glStuff.focus = true
+            this.close()
+        }
         Component.onCompleted: visible = false
     }
 
     MenuBar {
+        id: menuBar
         width: app.width
+
         Menu {
             title: qsTr("&File")
             Action {
@@ -160,7 +189,7 @@ Item {
             Action {
                 id: openAction
                 text: qsTr("&Open (Ctrl+O)")
-                enabled: false
+                enabled: true
                 shortcut: StandardKey.Open
                 onTriggered: {
                     if (geom.unsaved()) {
@@ -178,7 +207,7 @@ Item {
             Action {
                 id: saveAction
                 text: qsTr("&Save (Ctrl+S)")
-                enabled: false
+                enabled: true
                 shortcut: StandardKey.Save
                 onTriggered: {
                     if (geom.canSave()) {
@@ -191,7 +220,7 @@ Item {
             Action {
                 id: saveAsAction
                 text: qsTr("Save As")
-                enabled: false
+                enabled: true
                 onTriggered: saveAsDialog.open()
             }
             MenuSeparator {}
@@ -297,16 +326,50 @@ Item {
         }
     }
 
-    Geometry {
-        id: geom
-        position: Qt.vector3d(0, 0, -30)
-        rotation: Qt.quaternion(0, 0, 0, 0)
+    Item {
+        id: glStuff
+        Geometry {
+            id: geom
+            position: Qt.vector3d(0, 0, -30)
+            rotation: Qt.quaternion(0, 0, 0, 0)
+        }
+
+        focus: true
+        width: 1280
+        height: 720
+        y: menuBar.height
+
+        // pretty bad, make it smooth or sth
+        Keys.onPressed: {
+            if (event.key === Qt.Key_W)
+                geom.move(0, -0.5, 0)
+            if (event.key === Qt.Key_A)
+                geom.move(0.5, 0, 0)
+            if (event.key === Qt.Key_S)
+                geom.move(0, 0.5, 0)
+            if (event.key === Qt.Key_D)
+                geom.move(-0.5, 0, 0)
+            if (event.key === Qt.Key_R)
+                geom.move(0, 0, 0.5)
+            if (event.key === Qt.Key_F)
+                geom.move(0, 0, -0.5)
+        }
+
+        MouseArea {
+            id: mouse
+            anchors.fill: glStuff
+            // consider just passing the mouse to geom and handling there
+            onPositionChanged: {
+                geom.mouseMove(mouse.x, mouse.y);
+            }
+            onPressed: {
+                console.log(mouse.button);
+                if (mouse.button === Qt.LeftButton) {
+                    console.log("CLICK", mouse.x, mouse.y);
+                    geom.setMouse(mouse.x, mouse.y)
+                }
+            }
+        }
     }
-
-    // pretty bad, make it smooth or sth
-    Keys.onUpPressed: geom.position.y += 0.1 // change to Z
-    Keys.onDownPressed: geom.position.y -= 0.1 // change to Z
-    Keys.onRightPressed: geom.position.x += 0.1
-    Keys.onLeftPressed: geom.position.x -= 0.1
-
 }
+
