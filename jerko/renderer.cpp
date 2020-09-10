@@ -105,16 +105,11 @@ void Renderer::paint()
     farina->bind();
 
     // Calculate model view transformation
-    QMatrix4x4 matrix;
-
-    matrix.rotate(rotation);
-    matrix.translate(position);
-    matrix.rotate(thetaX, 0, 1, 0);
-    matrix.rotate(thetaY, 1, 0, 0);
+    QMatrix4x4 matrix = createMVmatrix();
 
     // Set modelview-projection matrix
     program->setUniformValue("mv_matrix", matrix);
-    program->setUniformValue("p_matrix", projection * matrix);
+    program->setUniformValue("p_matrix", projection);
 
     // Use texture unit 0 which contains farina.png
     //program->setUniformValue("texture", 0);

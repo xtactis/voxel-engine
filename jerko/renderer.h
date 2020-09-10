@@ -57,6 +57,29 @@ public:
     void initShaders();
     void initTextures();
 
+    QMatrix4x4 createMVmatrix() {
+        QMatrix4x4 matrix;
+        matrix.rotate(rotation);
+        matrix.translate(position);
+        matrix.rotate(thetaX, 0, 1, 0);
+        matrix.rotate(thetaY, 1, 0, 0);
+
+        return matrix;
+    }
+
+    QVector3D raycast(int mouseX, int mouseY) {
+        //qDebug() << "raycast";
+        //qDebug() << mouseX << mouseY;
+        float x = (2.0f * mouseX) / 1280 - 1.0f;
+        float y = (2.0f * mouseY) / 720 - 1.0f;
+        QVector4D ray_clip = {x, y, 1.0f, 1.0f};
+        QVector4D ray_eye = projection.inverted() * ray_clip;
+        ray_eye = {ray_eye.toVector2D(), 1.0, 0.0};
+        QVector3D ray_wor = (createMVmatrix().inverted() * ray_eye).toVector3D();
+        //qDebug() << ray_wor.normalized();
+        return ray_wor.normalized();
+    }
+
 public slots:
     void init();
     void paint();

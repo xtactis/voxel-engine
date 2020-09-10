@@ -46,7 +46,6 @@ struct GeometryEngine
         if (octree->changed()) {
             octree->createMesh(arrayBuf);
         }
-        octree->draw();
     }
 
     void serialize(std::ofstream &outfile) {

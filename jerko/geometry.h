@@ -33,6 +33,8 @@ private:
     int mouseStartX, mouseStartY;
     int mouseEndX, mouseEndY;
 
+    int selectX1, selectY1;
+
 public:
     Geometry();
 
@@ -66,6 +68,41 @@ public:
         mouseStartY = mouseEndY;
         mouseEndX = x;
         mouseEndY = y;
+    }
+
+    Q_INVOKABLE void select(int x, int y) {
+        const auto ray = renderer->raycast(x, y);
+        qDebug() << ray;
+        for (auto &geom: renderer->geometries) {
+            geom->octree->selectOne(ray);
+        }
+        selectX1 = x;
+        selectY1 = y;
+    }
+
+    Q_INVOKABLE void selectBox(int x, int y) {
+        int x1 = std::min(x, selectX1),
+            y1 = std::min(y, selectY1),
+            x2 = std::max(x, selectX1),
+            y2 = std::max(y, selectY1);
+        const auto b0 = renderer->raycast(x1, y1);
+        const auto b1 = renderer->raycast(x2, y1);
+        const auto b2 = renderer->raycast(x2, y2);
+        const auto b3 = renderer->raycast(x1, y2);
+        const auto n0 = QVector3D::crossProduct(b1, b0).normalized();
+        qDebug() << "n0:" << n0;
+        const auto n1 = QVector3D::crossProduct(b1, b2).normalized();
+        qDebug() << "n1:" << n1;
+        const auto n2 = QVector3D::crossProduct(b3, b2).normalized();
+        qDebug() << "n2:" << n2;
+        const auto n3 = QVector3D::crossProduct(b3, b0).normalized();
+        qDebug() << "n3:" << n3;
+        //const auto n4 = renderer->raycast(1280/2, 720/2);
+        std::vector<QVector3D> selected;
+        for (auto &geom: renderer->geometries) {
+            geom->octree->select({n0, n1, n2, n3}, selected);
+        }
+        qDebug() << selected.size();
     }
 
 public slots:

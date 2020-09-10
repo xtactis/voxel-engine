@@ -7,7 +7,7 @@ import QtQuick.Dialogs 1.2
 Item {
     id: app
     width: 1280
-    height: 750
+    height: 760
 
     //focus: true
 
@@ -328,11 +328,6 @@ Item {
 
     Item {
         id: glStuff
-        Geometry {
-            id: geom
-            position: Qt.vector3d(0, 0, -30)
-            rotation: Qt.quaternion(0, 0, 0, 0)
-        }
 
         focus: true
         width: 1280
@@ -355,20 +350,44 @@ Item {
                 geom.move(0, 0, -0.5)
         }
 
+
         MouseArea {
             id: mouse
             anchors.fill: glStuff
+            acceptedButtons: Qt.LeftButton | Qt.MiddleButton
             // consider just passing the mouse to geom and handling there
             onPositionChanged: {
-                geom.mouseMove(mouse.x, mouse.y);
+                if (mouse.buttons & Qt.LeftButton) {
+                    if (mouse.modifiers & Qt.ShiftModifier) {
+                        geom.selectBox(mouse.x, mouse.y)
+                    } else {
+                        geom.mouseMove(mouse.x, mouse.y)
+                    }
+                } else {
+                    // geom.pan(mouse.x, mouse.y);
+                }
             }
             onPressed: {
-                console.log(mouse.button);
-                if (mouse.button === Qt.LeftButton) {
+                if (mouse.button === Qt.LeftButton && (mouse.modifiers & Qt.ShiftModifier)) {
+                    console.log("SHIFT CLICK", mouse.x, mouse.y)
+                    geom.select(mouse.x, mouse.y)
+                } else if (mouse.button === Qt.LeftButton) {
                     console.log("CLICK", mouse.x, mouse.y);
+                    geom.setMouse(mouse.x, mouse.y)
+                } else if (mouse.button === Qt.MiddleButton) {
+                    console.log("SCROLL CLICK")
                     geom.setMouse(mouse.x, mouse.y)
                 }
             }
+            onWheel: {
+                geom.move(x, y, wheel.angleDelta.y/120);
+            }
+        }
+
+        Geometry {
+            id: geom
+            position: Qt.vector3d(0, 0, -30)
+            rotation: Qt.quaternion(0, 0, 0, 0)
         }
     }
 }

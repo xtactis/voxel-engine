@@ -62,7 +62,7 @@ struct Octree {
         return maxDepth;
     }
 
-    bool checkLeaf(float x, float y, float z) {
+    bool checkLeaf(float x, float y, float z) const {
         if (root) {
             return checkLeaf(x-halfsize*(x>=halfsize), y-halfsize*(y>=halfsize), z-halfsize*(z>=halfsize));
         }
@@ -101,15 +101,11 @@ struct Octree {
         qDebug() << "pts: " << mesh.points.size();
     }
 
-    void draw() {
-        //mesh.drawMesh();
-    }
-
     bool changed() {
         return true;
     }
 
-    int size() {
+    int size() const {
         int ret = 1+2*4+1+8*8;
         if (!root) return ret;
         for (int i = 0; i < 8; ++i) {
@@ -153,6 +149,69 @@ struct Octree {
         for (int i = 0; i < 8; ++i) {
             if (children[i]) {
                 childrenNodes[i]->serialize(outfile);
+            }
+        }
+    }
+
+    bool intersect(const QVector3D &ray, float x, float y, float z) {
+        float tmin, tmax, tymin, tymax, tzmin, tzmax;
+        const QVector3D invdir = -ray;
+        const QVector3D bounds[2] = {{x-halfsize, y-halfsize, z-halfsize}, {x+halfsize, y+halfsize, z+halfsize}};
+        int sign[3] = {invdir.x() < 0, invdir.y() < 0, invdir.z() < 0};
+        tmin = (bounds[sign[0]].x()) * invdir.x();
+        tmax = (bounds[1-sign[0]].x()) * invdir.x();
+        tymin = (bounds[sign[1]].y()) * invdir.y();
+        tymax = (bounds[1-sign[1]].y()) * invdir.y();
+
+        if ((tmin > tymax) || (tymin > tmax))
+            return false;
+        if (tymin > tmin)
+            tmin = tymin;
+        if (tymax < tmax)
+            tmax = tymax;
+
+        tzmin = (bounds[sign[2]].z()+10) * invdir.z();
+        tzmax = (bounds[1-sign[2]].z()+10) * invdir.z();
+
+        if ((tmin > tzmax) || (tzmin > tmax))
+            return false;
+        if (tzmin > tmin)
+            tmin = tzmin;
+        if (tzmax < tmax)
+            tmax = tzmax;
+
+        return true;
+    }
+
+    void selectOne(const QVector3D &ray, float x=0, float y=0, float z=0) {
+        if (!intersect(ray, x, y, z)) return;
+        if (!root) {
+            for (const auto &p: points) qDebug() << p;
+            return;
+        }
+        for (int i = 0; i < 8; ++i) {
+            if (children[i]) {
+                childrenNodes[i]->selectOne(ray, x+halfsize*(i&1), y+halfsize*!!(i&2), z+halfsize*!!(i&4));
+            }
+        }
+    }
+
+    void select(const std::array<QVector3D, 4> &normals, std::vector<QVector3D> &selected, float x=0, float y=0, float z=0) {
+        if (!root) {
+            for (const auto &n: normals) {
+                const auto &&dp = QVector3D::dotProduct(n, {x, y, z});
+                qDebug() << dp << x << y << z << n;
+                if (dp > 0)
+                    return;
+            }
+            for (const auto &p: points) {
+                selected.emplace_back(p);
+            }
+            return;
+        }
+        for (int i = 0; i < 8; ++i) {
+            if (children[i]) {
+                childrenNodes[i]->select(normals, selected, x+halfsize*(i&1), y+halfsize*!!(i&2), z+halfsize*!!(i&4));
             }
         }
     }
