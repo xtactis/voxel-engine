@@ -6,7 +6,7 @@ QT += widgets
 
 CONFIG += c++17
 
-# QMAKE_CXXFLAGS += -O2
+QMAKE_CXXFLAGS += -O2
 
 # The following define makes your compiler emit warnings if you use
 # any Qt feature that has been marked deprecated (the exact warnings

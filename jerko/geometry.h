@@ -12,6 +12,7 @@
 #include <QQuickItem>
 #include <QVector3D>
 #include <QQuaternion>
+#include <QtQuick/QQuickView>
 
 struct Header{
     unsigned long long size;
@@ -35,6 +36,12 @@ private:
 
     int selectX1, selectY1;
 
+    QString filename;
+    bool _canSave{false};
+
+public:
+    static QQuickView *view;
+
 public:
     Geometry();
 
@@ -44,8 +51,13 @@ public:
     QQuaternion rotation() const { return m_rotation; }
     void setRotation(const QQuaternion &rotation);
 
+    Q_INVOKABLE void setSave(const QString &filename) {
+        this->filename = filename;
+        _canSave = true;
+    }
+
     Q_INVOKABLE bool unsaved() const {return false;}
-    Q_INVOKABLE bool canSave() const {return false;}
+    Q_INVOKABLE bool canSave() const {return _canSave;}
     Q_INVOKABLE void move(float x, float y, float z) {
         m_position += {x, y, z};
         qDebug() << m_position;
@@ -72,7 +84,11 @@ public:
 
     Q_INVOKABLE void select(int x, int y) {
         const auto ray = renderer->raycast(x, y);
-        qDebug() << ray;
+
+        return;
+        // stopping here because selection doesn't work
+        // FIX THIS
+
         for (auto &geom: renderer->geometries) {
             geom->octree->selectOne(ray);
         }
@@ -90,14 +106,19 @@ public:
         const auto b2 = renderer->raycast(x2, y2);
         const auto b3 = renderer->raycast(x1, y2);
         const auto n0 = QVector3D::crossProduct(b1, b0).normalized();
-        qDebug() << "n0:" << n0;
+        //qDebug() << "n0:" << n0;
         const auto n1 = QVector3D::crossProduct(b1, b2).normalized();
-        qDebug() << "n1:" << n1;
+        //qDebug() << "n1:" << n1;
         const auto n2 = QVector3D::crossProduct(b3, b2).normalized();
-        qDebug() << "n2:" << n2;
+        //qDebug() << "n2:" << n2;
         const auto n3 = QVector3D::crossProduct(b3, b0).normalized();
-        qDebug() << "n3:" << n3;
+        //qDebug() << "n3:" << n3;
         //const auto n4 = renderer->raycast(1280/2, 720/2);
+
+        return;
+        // stopping here because selection doesn't work
+        // FIX THIS
+
         std::vector<QVector3D> selected;
         for (auto &geom: renderer->geometries) {
             geom->octree->select({n0, n1, n2, n3}, selected);
@@ -109,64 +130,12 @@ public slots:
     void sync();
     void cleanup();
 
-    void newProject() {
-        qDebug() << "new project";
-        renderer->reset();
-        qDebug() << "reset";
-        m_position = {0, 0, -10};
-        qDebug() << "position";
-        m_rotation = {0, 0, 0, 0};
-        qDebug() << "rotation";
-    }
+    void newProject();
+    void open(const QString &filename);
 
-    void open(const QString &filename) {
-#ifdef WIN32
-        // pesky '/' at the beginning, nobody liked that
-        std::ifstream infile(filename.mid(1).toStdString(),
-                             std::ifstream::in | std::ifstream::binary);
-#else
-        std::ifstream infile(filename.toStdString(),
-                             std::ifstream::in | std::ifstream::binary);
-#endif
-        Header header;
-        infile.read(reinterpret_cast<char*>(&header), sizeof(header));
-        renderer->geometries.reserve(header.size);
-        renderer->thetaX = header.thetaX;
-        renderer->thetaY = header.thetaY;
-        for (int i = 0; i < 3; ++i)
-            m_position[i] = header.pos[i];
-        qDebug() << header.size;
-        for (unsigned long long i = 0; i < header.size; ++i) {
-            renderer->geometries.push_back(std::make_shared<GeometryEngine>());
-            renderer->geometries[i]->octree = Octree::deserialize(infile);
-            renderer->geometries[i]->octree->loaded = true;
-            qDebug() << renderer->geometries[i]->octree->halfsize;
-        }
-        infile.close();
-    }
+    void save();
 
-    void save(const QString &filename) {
-#ifdef WIN32
-        // pesky '/' at the beginning, nobody liked that
-        std::ofstream outfile(filename.mid(1).toStdString(),
-                              std::ofstream::out | std::ofstream::binary);
-#else
-        std::ofstream outfile(filename.toStdString(),
-                              std::ofstream::out | std::ofstream::binary);
-#endif
-        Header header = {renderer->geometries.size(), renderer->thetaX, renderer->thetaY, {m_position.x(), m_position.y(), m_position.z()}};
-        outfile.write(reinterpret_cast<char*>(&header), sizeof(header));
-        for (const auto &g: renderer->geometries) {
-            g->serialize(outfile);
-        }
-        outfile.close();
-    }
-
-    void importModel(const QString &filename) {
-        if (filename.endsWith(".pts")) {
-            loadPoints(filename);
-        }
-    }
+    void importModel(const QString &filename);
     void exportModel(const QString &){}
 
     void undo(){}
@@ -180,55 +149,7 @@ private slots:
 
 private:
     void releaseResources() override;
-    void loadPoints(const QString &filename) {
-#ifdef WIN32
-        // pesky '/' at the beginning, nobody liked that
-        std::ifstream infile(filename.mid(1).toStdString());
-#else
-        std::ifstream infile(filename.toStdString());
-#endif
-        std::vector<QVector3D> pts;
-        if (infile.fail()) {
-            // TODO handle this properly with a message or sth
-            qDebug() << "whoops.. didn't know this was on";
-            return;
-        }
-        bool firstline = true;
-        float minx, maxx, miny, maxy, minz, maxz;
-        for (std::string line; std::getline(infile, line); ) {
-            float x, y, z;
-            if (!sscanf(line.c_str(), "%f %f %f", &x, &y, &z)) continue;
-            pts.emplace_back(x, y, z);
-            if (firstline) {
-                minx = maxx = x;
-                miny = maxy = y;
-                minz = maxz = z;
-                firstline = false;
-            } else {
-                minx = std::min(x, minx);
-                miny = std::min(y, miny);
-                minz = std::min(z, minz);
-                maxx = std::max(x, maxx);
-                maxy = std::max(y, maxy);
-                maxz = std::max(z, maxz);
-            }
-        }
-        infile.close();
-        // TODO: move this further along the pipeline to eliminate the extra loop
-        // compiler possibly does that automatically tho
-        // int i = 0;
-        for (auto &p: pts) {
-            p -= {minx, miny, minz};
-            //p /= 0.1; // resolution, also should be handled later lol
-            //p[0] = std::floor(p[0]/0.1);
-            //p[1] = std::floor(p[1]/0.1);
-            //p[2] = std::floor(p[2]/0.1);
-            //p *= 0.1;
-            //if (i++ % 1000 == 0) qDebug() << "after" << p;
-        }
-        qDebug() << renderer;
-        renderer->addLayer(pts, std::max({maxx-minx, maxy-miny, maxz-minz}));
-    }
+    void loadPoints(const QString &filename);
 
 signals:
     void positionChanged();

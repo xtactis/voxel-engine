@@ -7,8 +7,7 @@
 #include <QQuickStyle>
 #include <QQmlEngine>
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
     QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
     QCoreApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
 
@@ -20,6 +19,7 @@ int main(int argc, char *argv[])
     QApplication a(argc, argv);
     a.setApplicationName("Farina");
     a.setApplicationVersion("0.1");
+    a.setOrganizationName("stop asking me for an organization");
 
     QQuickStyle::setStyle("Fusion");
 
@@ -29,6 +29,8 @@ int main(int argc, char *argv[])
     view.setResizeMode(QQuickView::SizeRootObjectToView);
     view.setSource(QUrl("qrc:///main.qml"));
     view.show();
+
+    Geometry::view = &view; // FIXME: bad
 
     view.engine()->connect(view.engine(), SIGNAL(quit()), QCoreApplication::instance(), SLOT(quit()));
 

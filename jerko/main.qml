@@ -1,8 +1,11 @@
 import QtQuick 2.3
-import QtQuick.Controls 2.3
 import Qt3D.Render 2.0
-import Voxels 1.0
+import QtQuick.Window 2.2
 import QtQuick.Dialogs 1.2
+import QtQuick.Controls 2.3
+import Qt.labs.settings 1.0
+
+import Voxels 1.0
 
 Item {
     id: app
@@ -15,6 +18,10 @@ Item {
         return decodeURIComponent(path.toString().slice(7))
     }
 
+    function basename(path) {
+        return path.slice(path.lastIndexOf("/")+1);
+    }
+
     FileDialog {
         id: openDialog
         title: "Open"
@@ -22,6 +29,7 @@ Item {
         onAccepted: {
             geom.newProject()
             geom.open(getPath(this.fileUrl))
+            files.append({fileName: getPath(this.fileUrl)})
             glStuff.focus = true
             this.close()
         }
@@ -39,7 +47,9 @@ Item {
         title: "Save as"
         folder: shortcuts.home
         onAccepted: {
-            geom.save(getPath(this.fileUrl))
+            geom.setSave(getPath(this.fileUrl))
+            geom.save()
+            files.append({fileName: this.fileUrl})
             glStuff.focus = true
             this.close()
         }
@@ -169,6 +179,8 @@ Item {
 
     MenuBar {
         id: menuBar
+        x: 0
+        y: 0
         width: app.width
 
         Menu {
@@ -202,7 +214,28 @@ Item {
             Menu {
                 id: openRecentAction
                 title: qsTr("Open Recent")
-                enabled: false // TODO: add this functionality lol
+                enabled: files.count > 0
+                Instantiator {
+                    // TODO: save these to a file or sth
+                    model: ListModel { id: files }
+
+                    MenuItem {
+                        text: fileName
+                        onTriggered: {
+                            if (geom.unsaved()) {
+                                discardAndOpenDialog.open()
+                            } else {
+                                geom.newProject()
+                                geom.open(fileName)
+                            }
+                        }
+                    }
+
+                    onObjectAdded: {
+                        openRecentAction.insertItem(index, object)
+                    }
+                    onObjectRemoved: openRecentAction.removeItem(object)
+                }
             }
             Action {
                 id: saveAction
