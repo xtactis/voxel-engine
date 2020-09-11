@@ -1,4 +1,5 @@
 #include "geometry.h"
+#include "happly.h"
 
 #include <QtQuick/qquickwindow.h>
 #include <QtCore/QRunnable>
@@ -63,9 +64,43 @@ void Geometry::sync() {
 }
 
 void Geometry::importModel(const QString &filename) {
-    if (filename.endsWith(".pts")) {
-        loadPoints(filename);
+    std::vector<QVector3D> pts;
+    float minx=0, maxx=0, miny=0, maxy=0, minz=0, maxz=0;
+    { // scoped so _pts can be freed
+        std::vector<std::array<double, 3>> _pts;
+        if (filename.endsWith(".pts")) {
+            _pts = loadPoints(filename);
+        } else if (filename.endsWith(".ply") || filename.endsWith(".obj") || filename.endsWith(".stl")){
+            _pts = readPLY(filename);
+        } else {
+            qDebug() << "I'm sorry Dave I can't let you do that";
+        }
+        bool firstline = true;
+        for (const auto &p: _pts) {
+            pts.emplace_back(p[0], p[1], p[2]);
+            if (firstline) {
+                minx = maxx = p[0];
+                miny = maxy = p[1];
+                minz = maxz = p[2];
+                firstline = false;
+            } else {
+                minx = std::min((float)p[0], minx);
+                miny = std::min((float)p[1], miny);
+                minz = std::min((float)p[2], minz);
+                maxx = std::max((float)p[0], maxx);
+                maxy = std::max((float)p[1], maxy);
+                maxz = std::max((float)p[2], maxz);
+            }
+        }
     }
+    // TODO: move this further along the pipeline to eliminate the extra loop
+    // compiler possibly does that automatically tho
+    // int i = 0;
+    for (auto &p: pts) {
+        p -= {minx, miny, minz};
+    }
+    qDebug() << renderer;
+    renderer->addLayer(pts, std::max({maxx-minx, maxy-miny, maxz-minz}));
 }
 
 void Geometry::newProject() {
@@ -82,98 +117,88 @@ void Geometry::newProject() {
 
 void Geometry::open(const QString &filename) {
 #ifdef WIN32
-        // pesky '/' at the beginning, nobody liked that
-        std::ifstream infile(filename.mid(1).toStdString(),
-                             std::ifstream::in | std::ifstream::binary);
-        view->setTitle("Farina - " + filename.mid(1));
+    // pesky '/' at the beginning, nobody liked that
+    std::ifstream infile(filename.mid(1).toStdString(),
+                         std::ifstream::in | std::ifstream::binary);
+    view->setTitle("Farina - " + filename.mid(1));
 #else
-        std::ifstream infile(filename.toStdString(),
-                             std::ifstream::in | std::ifstream::binary);
-        view->setTitle("Farina - " + filename);
+    std::ifstream infile(filename.toStdString(),
+                         std::ifstream::in | std::ifstream::binary);
+    view->setTitle("Farina - " + filename);
 #endif
-        setSave(filename);
-        Header header;
-        infile.read(reinterpret_cast<char*>(&header), sizeof(header));
-        renderer->geometries.reserve(header.size);
-        renderer->thetaX = header.thetaX;
-        renderer->thetaY = header.thetaY;
-        for (int i = 0; i < 3; ++i)
-            m_position[i] = header.pos[i];
-        qDebug() << header.size;
-        for (unsigned long long i = 0; i < header.size; ++i) {
-            renderer->geometries.push_back(std::make_shared<GeometryEngine>());
-            renderer->geometries[i]->octree = Octree::deserialize(infile);
-            renderer->geometries[i]->octree->loaded = true;
-            qDebug() << renderer->geometries[i]->octree->halfsize;
-        }
-        infile.close();
+    setSave(filename);
+    Header header;
+    infile.read(reinterpret_cast<char*>(&header), sizeof(header));
+    renderer->geometries.reserve(header.size);
+    renderer->thetaX = header.thetaX;
+    renderer->thetaY = header.thetaY;
+    for (int i = 0; i < 3; ++i)
+        m_position[i] = header.pos[i];
+    qDebug() << header.size;
+    for (unsigned long long i = 0; i < header.size; ++i) {
+        renderer->geometries.push_back(std::make_shared<GeometryEngine>());
+        renderer->geometries[i]->octree = Octree::deserialize(infile);
+        renderer->geometries[i]->octree->loaded = true;
+        qDebug() << renderer->geometries[i]->octree->halfsize;
     }
+    infile.close();
+}
 
 void Geometry::save() {
 #ifdef WIN32
-        // pesky '/' at the beginning, nobody liked that
-        std::ofstream outfile(filename.mid(1).toStdString(),
-                              std::ofstream::out | std::ofstream::binary);
-        view->setTitle("Farina - " + filename.mid(1));
+    // pesky '/' at the beginning, nobody liked that
+    std::ofstream outfile(filename.mid(1).toStdString(),
+                          std::ofstream::out | std::ofstream::binary);
+    view->setTitle("Farina - " + filename.mid(1));
 #else
-        std::ofstream outfile(filename.toStdString(),
-                              std::ofstream::out | std::ofstream::binary);
-        view->setTitle("Farina - " + filename);
+    std::ofstream outfile(filename.toStdString(),
+                          std::ofstream::out | std::ofstream::binary);
+    view->setTitle("Farina - " + filename);
 #endif
-        Header header = {renderer->geometries.size(), renderer->thetaX, renderer->thetaY, {m_position.x(), m_position.y(), m_position.z()}};
-        outfile.write(reinterpret_cast<char*>(&header), sizeof(header));
-        for (const auto &g: renderer->geometries) {
-            g->serialize(outfile);
-        }
-        outfile.close();
+    Header header = {renderer->geometries.size(), renderer->thetaX, renderer->thetaY, {m_position.x(), m_position.y(), m_position.z()}};
+    outfile.write(reinterpret_cast<char*>(&header), sizeof(header));
+    for (const auto &g: renderer->geometries) {
+        g->serialize(outfile);
     }
+    outfile.close();
+}
 
-void Geometry::loadPoints(const QString &filename) {
+std::vector<std::array<double, 3>> Geometry::loadPoints(const QString &filename) {
 #ifdef WIN32
-        // pesky '/' at the beginning, nobody liked that
-        std::ifstream infile(filename.mid(1).toStdString());
+    // pesky '/' at the beginning, nobody liked that
+    std::ifstream infile(filename.mid(1).toStdString());
 #else
-        std::ifstream infile(filename.toStdString());
+    std::ifstream infile(filename.toStdString());
 #endif
-        std::vector<QVector3D> pts;
-        if (infile.fail()) {
-            // TODO handle this properly with a message or sth
-            qDebug() << "whoops.. didn't know this was on";
-            return;
-        }
-        bool firstline = true;
-        float minx, maxx, miny, maxy, minz, maxz;
-        for (std::string line; std::getline(infile, line); ) {
-            float x, y, z;
-            if (!sscanf(line.c_str(), "%f %f %f", &x, &y, &z)) continue;
-            pts.emplace_back(x, y, z);
-            if (firstline) {
-                minx = maxx = x;
-                miny = maxy = y;
-                minz = maxz = z;
-                firstline = false;
-            } else {
-                minx = std::min(x, minx);
-                miny = std::min(y, miny);
-                minz = std::min(z, minz);
-                maxx = std::max(x, maxx);
-                maxy = std::max(y, maxy);
-                maxz = std::max(z, maxz);
-            }
-        }
-        infile.close();
-        // TODO: move this further along the pipeline to eliminate the extra loop
-        // compiler possibly does that automatically tho
-        // int i = 0;
-        for (auto &p: pts) {
-            p -= {minx, miny, minz};
-            //p /= 0.1; // resolution, also should be handled later lol
-            //p[0] = std::floor(p[0]/0.1);
-            //p[1] = std::floor(p[1]/0.1);
-            //p[2] = std::floor(p[2]/0.1);
-            //p *= 0.1;
-            //if (i++ % 1000 == 0) qDebug() << "after" << p;
-        }
-        qDebug() << renderer;
-        renderer->addLayer(pts, std::max({maxx-minx, maxy-miny, maxz-minz}));
+    std::vector<std::array<double, 3>> pts;
+    if (infile.fail()) {
+        // TODO handle this properly with a message or sth
+        qDebug() << "whoops.. didn't know this was on";
+        return pts;
     }
+    for (std::string line; std::getline(infile, line); ) {
+        double x, y, z;
+        if (!sscanf(line.c_str(), "%lf %lf %lf", &x, &y, &z)) continue;
+        pts.push_back({x, y, z});
+    }
+    infile.close();
+    return pts;
+}
+
+std::vector<std::array<double, 3>> Geometry::readPLY(const QString &filename) {
+#ifdef WIN32
+    // pesky '/' at the beginning, nobody liked that
+    happly::PLYData plyIn(filename.mid(1).toStdString());
+#else
+    happly::PLYData plyIn(filename.toStdString());
+#endif
+    if (plyIn.hasElement("vertices")) {
+        return plyIn.getVertexPositions("vertices");
+    } else if (plyIn.hasElement("vertex")) {
+        return plyIn.getVertexPositions("vertex");
+    } else {
+        // TODO: handle properly
+        qDebug() << "nothing here but us chickens";
+        return std::vector<std::array<double, 3>>();
+    }
+}

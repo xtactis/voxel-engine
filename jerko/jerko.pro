@@ -1,5 +1,5 @@
 QT       += core gui opengl \
-    quick quickcontrols2
+    quick quickcontrols2 3drender
 LIBS     += -lopengl32
 
 QT += widgets
@@ -30,6 +30,7 @@ SOURCES += \
 HEADERS += \
     geometry.h \
     geometryengine.h \
+    happly.h \
     mesh.h \
     octree.h \
     renderer.h

@@ -81,7 +81,11 @@ Item {
         }
         Component.onCompleted: visible = false
         selectMultiple: true
-        nameFilters: [ "Point files (*.pts)", "OcTree files (*.ot)" ]
+        nameFilters: [ "Point files (*.pts)",
+                       "OcTree files (*.ot)",
+                       "Wavefront OBJ (*.obj)",
+                       "Stanford Triangle Format PLY (*.ply)",
+                       "STL (STereoLithography) (*.stl)"]
     }
 
     FileDialog {
@@ -176,6 +180,13 @@ Item {
         }
         Component.onCompleted: visible = false
     }
+
+    /* TODO: finish me
+    Dialog {
+        id: changeResolution
+        visible: true
+        standardButtons: StandardButton.Apply
+    }*/
 
     MenuBar {
         id: menuBar
@@ -387,17 +398,17 @@ Item {
         MouseArea {
             id: mouse
             anchors.fill: glStuff
-            acceptedButtons: Qt.LeftButton | Qt.MiddleButton
+            acceptedButtons: Qt.LeftButton | Qt.MiddleButton | Qt.RightButton
             // consider just passing the mouse to geom and handling there
             onPositionChanged: {
-                if (mouse.buttons & Qt.LeftButton) {
+                if ((mouse.buttons & Qt.LeftButton) && (mouse.buttons & Qt.RightButton)) {
+                    geom.pan(mouse.x, mouse.y);
+                } else if (mouse.buttons & Qt.LeftButton) {
                     if (mouse.modifiers & Qt.ShiftModifier) {
                         geom.selectBox(mouse.x, mouse.y)
                     } else {
                         geom.mouseMove(mouse.x, mouse.y)
                     }
-                } else {
-                    // geom.pan(mouse.x, mouse.y);
                 }
             }
             onPressed: {

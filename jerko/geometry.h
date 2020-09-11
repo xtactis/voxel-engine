@@ -64,6 +64,14 @@ public:
         if (renderer) renderer->setPosition(m_position);
     }
 
+    Q_INVOKABLE void pan(int x, int y) {
+        // TODO: nicer panning that actually looks at the scene
+        const QVector2D delta(x-mouseStartX, mouseStartY-y);
+        setPosition(m_position+delta/32);
+        mouseStartX = x;
+        mouseStartY = y;
+    }
+
     Q_INVOKABLE void setMouse(int x, int y) {
         mouseStartX = x;
         mouseStartY = y;
@@ -132,7 +140,6 @@ public slots:
 
     void newProject();
     void open(const QString &filename);
-
     void save();
 
     void importModel(const QString &filename);
@@ -144,12 +151,14 @@ public slots:
     void copy(){}
     void paste(){}
 
+    std::vector<std::array<double, 3>> readPLY(const QString &filename);
+
 private slots:
     void handleWindowChanged(QQuickWindow *win);
 
 private:
     void releaseResources() override;
-    void loadPoints(const QString &filename);
+    std::vector<std::array<double, 3>> loadPoints(const QString &filename);
 
 signals:
     void positionChanged();
