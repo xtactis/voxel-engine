@@ -16,12 +16,12 @@ struct GeometryEngine
     QOpenGLBuffer arrayBuf;
     std::shared_ptr<Octree> octree;
 
-    bool _initialized{false};
-    bool paused{false};
+    std::atomic<bool> _initialized{false};
+    std::atomic<bool> paused{false};
 
     GeometryEngine(float size=20);
     virtual ~GeometryEngine();
-    void init();
+    bool init();
 
     void drawCubeGeometry(QOpenGLShaderProgram *program);
     bool initialized() const;

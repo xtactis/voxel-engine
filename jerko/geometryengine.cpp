@@ -20,8 +20,8 @@ bool GeometryEngine::initialized() const {
     return _initialized;
 }
 
-void GeometryEngine::init() {
-    if (!octree->loaded) return;
+bool GeometryEngine::init() {
+    if (!octree->loaded) return false;
     qDebug() << arrayBuf.create();
 
     octree->createMesh(arrayBuf);
@@ -29,15 +29,15 @@ void GeometryEngine::init() {
     qDebug() << octree->maxDepth;
     qDebug() << octree->maxDepth;
     qDebug() << octree->halfsize;
-    qDebug() << octree->resolution; // make this dynamic somehow
+    qDebug() << octree->resolution;
     qDebug() << octree->size();
 
-    _initialized = true;
+    return _initialized = true;
 }
 
 void GeometryEngine::drawCubeGeometry(QOpenGLShaderProgram *program) {
     if (!_initialized) {
-        init();
+        if (!init()) return;
     }
     arrayBuf.bind();
 
@@ -60,7 +60,7 @@ void GeometryEngine::addPoints(const std::vector<QVector3D> &pts) {
 }
 
 void GeometryEngine::addPoint(float x, float y, float z) {
-    octree->addPoint(x, y, z);
+    octree->addPoint(x, y, z, {x, y, z});
 }
 
 void GeometryEngine::addPoint(const QVector3D &point) {

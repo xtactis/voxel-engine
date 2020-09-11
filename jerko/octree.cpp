@@ -1,10 +1,33 @@
 #include "octree.h"
 
-int Octree::addPoint(const QVector3D &point, int depth) {
-    return addPoint(point.x(), point.y(), point.z(), depth);
+double Octree::resolution = 0.1;
+
+std::shared_ptr<Octree> Octree::update() {
+    auto newOt = std::make_shared<Octree>(halfsize*2);
+    std::vector<QVector3D> pts;
+    getPoints(pts);
+    for (const auto &p: pts) {
+        newOt->addPoint(p);
+    }
+    newOt->loaded = true;
+    return newOt;
 }
 
-int Octree::addPoint(float x, float y, float z, int depth) {
+void Octree::getPoints(std::vector<QVector3D> &pts) const {
+    for (const auto &p: points)
+        pts.push_back(p);
+    if (!root) return;
+    for (int i = 0; i < 8; ++i) {
+        if (children[i])
+            childrenNodes[i]->getPoints(pts);
+    }
+}
+
+int Octree::addPoint(const QVector3D &point, int depth) {
+    return addPoint(point.x(), point.y(), point.z(), point, depth);
+}
+
+int Octree::addPoint(float x, float y, float z, const QVector3D &orig, int depth) {
     maxDepth = std::max(depth, maxDepth);
     char ind = (x>halfsize)|(y>halfsize)<<1|(z>halfsize)<<2;
     children[ind] = 1;
@@ -14,9 +37,9 @@ int Octree::addPoint(float x, float y, float z, int depth) {
         }
     }
     if (halfsize > resolution) {
-        maxDepth = std::max(maxDepth, childrenNodes[(int)ind]->addPoint(x-halfsize*(x>halfsize), y-halfsize*(y>halfsize), z-halfsize*(z>halfsize), depth+1));
+        maxDepth = std::max(maxDepth, childrenNodes[(int)ind]->addPoint(x-halfsize*(x>halfsize), y-halfsize*(y>halfsize), z-halfsize*(z>halfsize), orig, depth+1));
     } else {
-        points.emplace_back(x, y, z);
+        points.emplace_back(orig);
     }
     root = true;
     return maxDepth;
@@ -45,6 +68,7 @@ void Octree::createMeshHelper(Mesh &m, double x, double y, double z) {
 }
 
 void Octree::createMesh(QOpenGLBuffer &arrayBuf) {
+    qDebug() << "create mesh?";
     mesh.clearMesh();
     createMeshHelper(mesh);
     mesh.createMesh(arrayBuf);
@@ -52,7 +76,7 @@ void Octree::createMesh(QOpenGLBuffer &arrayBuf) {
 }
 
 int Octree::size() const {
-    int ret = 1+2*4+1+8*8;
+    int ret = 1+2*4+1+8*8+points.size()*3*sizeof(float);
     if (!root) return ret;
     for (int i = 0; i < 8; ++i) {
         if (children[i])

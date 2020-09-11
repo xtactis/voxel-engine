@@ -51,6 +51,23 @@ public:
     QQuaternion rotation() const { return m_rotation; }
     void setRotation(const QQuaternion &rotation);
 
+    Q_INVOKABLE void setResolution(double resolution) {
+        if (std::fabs(Octree::resolution-resolution) <= 1e-6) return;
+        Octree::resolution = resolution;
+        // FIXME: these flags are disgusting there has to be a better way
+        renderer->paused = true;
+        for (auto &geom: renderer->geometries) {
+            geom->_initialized = false;
+            geom->octree->loaded = false;
+            geom->octree = geom->octree->update();
+        }
+        renderer->paused = false;
+    }
+
+    Q_INVOKABLE double getResolution() {
+        return Octree::resolution;
+    }
+
     Q_INVOKABLE void setSave(const QString &filename) {
         this->filename = filename;
         _canSave = true;

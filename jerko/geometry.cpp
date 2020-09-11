@@ -74,8 +74,10 @@ void Geometry::importModel(const QString &filename) {
             _pts = readPLY(filename);
         } else {
             qDebug() << "I'm sorry Dave I can't let you do that";
+            return;
         }
         bool firstline = true;
+        int i = 0;
         for (const auto &p: _pts) {
             pts.emplace_back(p[0], p[1], p[2]);
             if (firstline) {
@@ -91,6 +93,7 @@ void Geometry::importModel(const QString &filename) {
                 maxy = std::max((float)p[1], maxy);
                 maxz = std::max((float)p[2], maxz);
             }
+            ++i;
         }
     }
     // TODO: move this further along the pipeline to eliminate the extra loop

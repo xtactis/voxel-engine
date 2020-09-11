@@ -32,7 +32,7 @@ struct Octree {
     std::vector<QVector3D> points;
 
     int maxDepth = 0;
-    constexpr static double resolution {0.1};
+    static double resolution;
     float halfsize; //actually halfsize lol
     Mesh mesh;
 
@@ -40,8 +40,12 @@ struct Octree {
 
     Octree(float s) : root(false), halfsize(s/2) {}
 
+    std::shared_ptr<Octree> update();
+
+    void getPoints(std::vector<QVector3D> &pts) const;
+
     int addPoint(const QVector3D &point, int depth=0);
-    int addPoint(float x, float y, float z, int depth=0);
+    int addPoint(float x, float y, float z, const QVector3D &orig, int depth=0);
 
     bool checkLeaf(float x, float y, float z) const;
 

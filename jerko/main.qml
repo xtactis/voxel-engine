@@ -1,16 +1,15 @@
 import QtQuick 2.3
 import Qt3D.Render 2.0
-import QtQuick.Window 2.2
 import QtQuick.Dialogs 1.2
+import QtQuick.Layouts 1.12
 import QtQuick.Controls 2.3
-import Qt.labs.settings 1.0
 
 import Voxels 1.0
 
 Item {
     id: app
     width: 1280
-    height: 760
+    height: menuBar.height+statusBar.height+glStuff.height
 
     //focus: true
 
@@ -181,13 +180,6 @@ Item {
         Component.onCompleted: visible = false
     }
 
-    /* TODO: finish me
-    Dialog {
-        id: changeResolution
-        visible: true
-        standardButtons: StandardButton.Apply
-    }*/
-
     MenuBar {
         id: menuBar
         x: 0
@@ -355,6 +347,32 @@ Item {
                 onTriggered: geom.copy()
                 enabled: false
             }
+            Action {
+                id: changeResolutionAction
+                text: qsTr("Change &Resolution")
+                enabled: true
+                onTriggered: {
+                    let comp = Qt.createComponent("resolutionDialog.qml")
+                    console.log(comp.status);
+                    if (comp.status === Component.Ready) {
+                        let dialog = comp.createObject(parent, {inRes: geom.getResolution()})
+                        console.log(dialog)
+                        dialogConnection.target = dialog
+                        dialog.show()
+                    } else {
+                        console.log(comp.errorString())
+                    }
+                }
+            }
+            Connections {
+                id: dialogConnection
+                onVisibleChanged: {
+                    if (!target.visible) {
+                        console.log(target.resolution)
+                        geom.setResolution(target.resolution)
+                    }
+                }
+            }
         }
 
         MenuBarItem {
@@ -394,7 +412,6 @@ Item {
                 geom.move(0, 0, -0.5)
         }
 
-
         MouseArea {
             id: mouse
             anchors.fill: glStuff
@@ -432,6 +449,30 @@ Item {
             id: geom
             position: Qt.vector3d(0, 0, -30)
             rotation: Qt.quaternion(0, 0, 0, 0)
+        }
+    }
+    Rectangle { // TODO: figure this out eventually
+        id: statusBar
+        height: 30
+        y: app.height-this.height
+        width: app.width
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 2
+            RowLayout {
+                Layout.fillHeight: true
+                Layout.fillWidth: true
+                spacing: 20
+                ProgressBar {
+                    objectName: actualProgressBar
+                    height: 15
+                    indeterminate: false
+                }
+                Text {
+                    objectName: progressBarText
+                    text: "Ready"
+                }
+            }
         }
     }
 }
